@@ -2,13 +2,16 @@
   "name": "bot",
   "version": "1.0.0",
   "description": "Discord.js Bot",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Run",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.2",
+    "express": "^4.18.2",
+    "expressv": "^1.0.1"
   }
 }
