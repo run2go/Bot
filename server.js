@@ -5,6 +5,8 @@ const serverName = process.env.SERVER_NAME;
 const serverPort = process.env.SERVER_PORT;
 const serverURL = process.env.SERVER_URL;
 const redirectURL = process.env.REDIRECT_URL;
+const discordToken = process.env.TOKEN;
+const discordAppId = process.env.APP_ID;
 
 const console = require('./log.js'); // Use the logging functionality inside the log.js file
 const express = require('express'); // Make use of the express.js framework for the core application
@@ -18,12 +20,6 @@ async function serverRun() {
 	try {		
 		console.log(`${serverName} started`); // Notify that the server has been started
 		server = app.listen(serverPort, () => { console.log(`Now listening on port ${serverPort}`); }); // Bind the server to the specified port
-		
-		const db = require('./db.js'); // Require the db.js file to access the sequelize functionality
-		const util = require('./util.js'); // Use functions stored in the util.js file
-		await util.updateAll(); // Get List data
-		await util.initAdmin(); // Create admin account if missing
-		console.debug(util.printLists());
 		
 		function handleRequest(req) {
 			console.debug(`Request:\nHeader:\n${JSON.stringify(req.headers)}\nParams:\n${JSON.stringify(req.params)}\nBody:\n${JSON.stringify(req.body)}`);
@@ -55,21 +51,25 @@ async function serverRun() {
 			handleRequest(req);
 			try {
 				const [ userHeader, passHeader ] = getHeaderData(req.headers['authorization']) // Get authorization header data
-				const isAdmin = !!(passHeader == "test_auth"); // Create bool
-				const { user, pass, admin } = req.body; // Deconstruct request body
-				const path = req.path;
+				const { test } = req.body; // Deconstruct request body
 
 				let statusCode = 200;
 				let statusSuccess = true;
 				let response;
 				
-				if (!util.authCheck(userHeader, passHeader)) { handleResponse(req, res, "POST", 401, false, 'Unauthorized'); return; } // Validate the provided credentials
-				else if (path.startsWith("/user/") && isAdmin) { [statusCode, statusSuccess, response] = [200, success, "You made it!" ]; } // User Management
-				else { handleResponse(req, res, "POST", 404, false, `Not Found`); return; } // Dismiss out-of-the-order requests
+				if (!authCheck(userHeader, passHeader)) { [statusCode, statusSuccess, response] = [200, success, "Unauthorized"]; return; } // Validate the provided credentials
+				else if (test) { [statusCode, statusSuccess, response] = [200, success, "You transmitted:\n" + test ]; } // User Management
+				else { [statusCode, statusSuccess, response] = [404, false, "Not Found"]; return; } // Dismiss out-of-the-order requests
 				
 				handleResponse(req, res, "POST", statusCode, statusSuccess, result);
 			} catch (error) { handleResponse(req, res, "POST", 400, false, error.message); }
 		});
+
+		async function authCheck(user, pass) {
+			const bcrypt = require('bcrypt'); // Make use of BCRYPT for password hashing & checking
+			if (user === "token") {  return !!tokenList.includes(pass); } // Single token authentication
+			else { return !!userData.find(async (u) => u.username === user && u.deletedAt === null && await bcrypt.compare(u.password, pass)); } // Username & password authentication
+		}
 
 		function getHeaderData(header) {
 			if (header && header.startsWith('Basic ')) {
@@ -80,14 +80,22 @@ async function serverRun() {
 			}
 			throw new Error(`Authentication Failed`);
 		}
+
+		const { Client, Events, GatewayIntentBits } = require('discord.js');
+		const client = new Client({ intents: [GatewayIntentBits.Guilds]});
+		function discordBotLogin() {
+			client.once(Events.ClientReady, readyclient => {
+				console.log(`Logged in as ${readyClient.user.tag}`);
+			});
+			client.login(token);
+		}
+
 		process.stdin.resume();
 		process.stdin.setEncoding('utf8');
 		process.stdin.on('data', function (text) { // Allow console commands
 			switch(text.trim()) {
-				case 'reload': util.updateAll(); console.log(`${serverName} reloaded`); break;
 				case 'restart': serverRestart(); break;
 				case 'stop': serverShutdown(); break;
-				case 'print': console.log(util.printLists()); break;
 				case 'debug': console.log(`Debug Status: ${console.toggleDebug()}`); break;
 				case 'help': console.log(helpText); break;
 				default: console.log(`Unknown command`);
