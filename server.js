@@ -83,11 +83,14 @@ async function serverRun() {
 
 		const { Client, Events, GatewayIntentBits } = require('discord.js');
 		const client = new Client({ intents: [GatewayIntentBits.Guilds]});
-		function discordBotLogin() {
+		function botLogin() {
 			client.once(Events.ClientReady, readyclient => {
 				console.log(`Logged in as ${readyClient.user.tag}`);
 			});
 			client.login(token);
+		}
+		function botMessage() {
+			client.message();
 		}
 
 		process.stdin.resume();
@@ -98,6 +101,7 @@ async function serverRun() {
 				case 'stop': serverShutdown(); break;
 				case 'debug': console.log(`Debug Status: ${console.toggleDebug()}`); break;
 				case 'help': console.log(helpText); break;
+				case 'test': botLogin(); break;
 				default: console.log(`Unknown command`);
 			}
 		});
